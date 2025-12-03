@@ -25,6 +25,8 @@ from app.schemas.schemas import (
     ErrorResponse,
 )
 from app.services.langchain_rag_pipeline import get_rag_response
+from app.services.pii_masking import mask_user_input, unmask_response
+from app.services.customer_context import build_prompt_context
 
 logger = get_logger(__name__)
 settings = get_settings()
@@ -73,76 +75,47 @@ async def chat(
     )
     
     try:
-        # Prepare customer context
+        # Step 1: Process and mask PII in user input
+        pii_result = await mask_user_input(request.message)
+        masked_message = pii_result['masked_text']
+        session_id = pii_result['session_id']
+        
+        # Log PII detection for security audit
+        if pii_result['pii_count'] > 0:
+            logger.info("PII detected in user input", 
+                       extra={
+                           "session_id": session_id,
+                           "pii_count": pii_result['pii_count'],
+                           "pii_types": [p['type'] for p in pii_result['pii_detected']]
+                       })
+        
+        # Step 2: Build comprehensive context using location and customer data
+        latitude = request.metadata.get('latitude')
+        longitude = request.metadata.get('longitude')
+        
+        context = await build_prompt_context(
+            customer_id=request.customer_id,
+            latitude=latitude,
+            longitude=longitude,
+            store_id=request.store_id
+        )
+        
+        # Step 3: Extract contexts for RAG pipeline
         customer_context = {
-            "customer_name": "Valued Customer",
-            "loyalty_tier": "bronze",
-            "favorite_categories": ["coffee", "snacks"]
+            "customer_name": context['customer_name'],
+            "loyalty_tier": context['loyalty_tier'],
+            "favorite_categories": context['favorite_categories']
         }
         
-        # Get customer data if available
-        if request.customer_id:
-            cache_key = f"customer:{request.customer_id}"
-            customer_data = await cache_get(cache_key)
-            
-            if not customer_data:
-                result = await db.execute(
-                    select(Customer).where(Customer.id == request.customer_id)
-                )
-                customer = result.scalar_one_or_none()
-                
-                if customer:
-                    customer_data = {
-                        "name": customer.name,
-                        "loyalty_tier": customer.loyalty_tier,
-                        "preferences": customer.preferences
-                    }
-                    await cache_set(cache_key, customer_data, settings.customer_cache_ttl)
-            
-            if customer_data:
-                customer_context = {
-                    "customer_name": customer_data["name"],
-                    "loyalty_tier": customer_data["loyalty_tier"],
-                    "favorite_categories": customer_data.get("preferences", {}).get("favorite_categories", ["coffee"])
-                }
-        
-        # Prepare location context
         location_context = {
-            "distance_to_store": "2.5 km",
-            "store_name": "Starbucks Central",
-            "weather": "pleasant"
+            "distance_to_store": context['distance_to_store'],
+            "store_name": context['store_name'],
+            "weather": context['weather']
         }
         
-        # Get store data if available
-        if request.store_id:
-            cache_key = f"store:{request.store_id}"
-            store_data = await cache_get(cache_key)
-            
-            if not store_data:
-                result = await db.execute(
-                    select(Store).where(Store.id == request.store_id)
-                )
-                store = result.scalar_one_or_none()
-                
-                if store:
-                    store_data = {
-                        "name": store.name,
-                        "latitude": store.latitude,
-                        "longitude": store.longitude,
-                        "current_promotions": store.current_promotions
-                    }
-                    await cache_set(cache_key, store_data, settings.store_cache_ttl)
-            
-            if store_data:
-                location_context = {
-                    "distance_to_store": "1.2 km",  # Could calculate actual distance
-                    "store_name": store_data["name"],
-                    "weather": "pleasant"  # Could integrate weather API
-                }
-        
-        # Generate response using RAG pipeline
+        # Step 4: Generate response using RAG pipeline with masked input
         rag_response = await get_rag_response(
-            request.message,
+            masked_message,  # Use masked message for AI processing
             customer_context,
             location_context
         )
@@ -151,16 +124,26 @@ async def chat(
         sources = rag_response.get("sources", [])
         confidence = rag_response.get("confidence", 0.8)
         
-        # Record interaction if customer is identified
+        # Step 5: Unmask response if needed (for development - in production, keep masked)
+        # For now, we'll keep the response as-is since it shouldn't contain user PII
+        final_response = response_text
+        
+        # Step 6: Record interaction with masked data for privacy
         if request.customer_id:
             interaction = Interaction(
                 customer_id=request.customer_id,
                 store_id=request.store_id,
                 interaction_type="chat",
                 context={
-                    "message": request.message[:500],  # Truncate for storage
-                    "response": response_text[:500],
-                    "metadata": request.metadata
+                    "message_hash": pii_result.get('session_id'),  # Store session ID instead of actual message
+                    "response": final_response[:500],  # Response should be safe
+                    "pii_detected": pii_result['pii_count'] > 0,
+                    "metadata": request.metadata,
+                    "context_used": {
+                        "weather": context.get('weather'),
+                        "store": context.get('store_name'),
+                        "loyalty_tier": context.get('loyalty_tier')
+                    }
                 }
             )
             db.add(interaction)
@@ -169,20 +152,25 @@ async def chat(
         processing_time = int((time.time() - start_time) * 1000)
         
         logger.info(
-            "Chat response generated",
-            customer_id=request.customer_id,
-            store_id=request.store_id,
-            processing_time_ms=processing_time
+            "Chat response generated with PII protection",
+            extra={
+                "customer_id": request.customer_id,
+                "store_id": request.store_id,
+                "session_id": session_id,
+                "processing_time_ms": processing_time,
+                "pii_protected": pii_result['pii_count'] > 0,
+                "context_enhanced": bool(latitude and longitude)
+            }
         )
         
         return ChatResponse(
-            response=response_text,
+            response=final_response,
             customer_id=request.customer_id,
             store_id=request.store_id,
             sources=sources,  # RAG sources from knowledge base
             confidence_score=confidence,  # AI confidence score
             processing_time_ms=processing_time,
-            session_id=None  # Will be implemented with session management
+            session_id=session_id  # Return session ID for PII tracking
         )
         
     except Exception as e:

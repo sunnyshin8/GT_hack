@@ -31,12 +31,24 @@ class ChatRequest(BaseSchema):
     customer_id: Optional[str] = Field(None, description="Customer ID for personalization")
     store_id: Optional[str] = Field(None, description="Store ID for context")
     conversation_history: List[ChatMessage] = Field(default_factory=list, description="Previous messages")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional context")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional context (can include latitude, longitude)")
     
     @validator("conversation_history")
     def validate_history_length(cls, v):
         if len(v) > 50:  # Limit conversation history
             return v[-50:]
+        return v
+    
+    @validator("metadata")
+    def validate_location_data(cls, v):
+        """Validate location data if provided."""
+        if 'latitude' in v and 'longitude' in v:
+            lat = v['latitude']
+            lon = v['longitude']
+            if not (-90 <= lat <= 90):
+                raise ValueError("Latitude must be between -90 and 90")
+            if not (-180 <= lon <= 180):
+                raise ValueError("Longitude must be between -180 and 180")
         return v
 
 

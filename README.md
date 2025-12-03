@@ -134,7 +134,6 @@ frontend/
 4. **Configure Environment**:
    ```bash
    # Copy .env file and update with your Gemini API key
-   GEMINI_API_KEY=AIzaSyBfyi7UZ_ETTGCHsZ5bCvgVk4LzxfXQzfY
    GEMINI_MODEL=gemini-2.5-flash
    ```
 
