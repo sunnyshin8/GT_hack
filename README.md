@@ -449,7 +449,7 @@ npm run test:e2e          # Run end-to-end tests
 python run.py              # http://localhost:8000
 
 # Frontend
-cd frontend && npm run dev # http://localhost:3000
+cd frontend ; npm run dev # http://localhost:3000
 ```
 
 ### Production Deployment
