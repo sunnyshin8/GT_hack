@@ -24,6 +24,7 @@ from app.schemas.schemas import (
     Store as StoreSchema,
     ErrorResponse,
 )
+from app.services.langchain_rag_pipeline import get_rag_response
 
 logger = get_logger(__name__)
 settings = get_settings()
@@ -72,17 +73,19 @@ async def chat(
     )
     
     try:
-        # Placeholder response logic
-        response_text = f"Thank you for your message: '{request.message}'. "
+        # Prepare customer context
+        customer_context = {
+            "customer_name": "Valued Customer",
+            "loyalty_tier": "bronze",
+            "favorite_categories": ["coffee", "snacks"]
+        }
         
-        # Add customer personalization if available
+        # Get customer data if available
         if request.customer_id:
-            # Try to get customer from cache first
             cache_key = f"customer:{request.customer_id}"
             customer_data = await cache_get(cache_key)
             
             if not customer_data:
-                # Fetch from database
                 result = await db.execute(
                     select(Customer).where(Customer.id == request.customer_id)
                 )
@@ -94,13 +97,23 @@ async def chat(
                         "loyalty_tier": customer.loyalty_tier,
                         "preferences": customer.preferences
                     }
-                    # Cache for future use
                     await cache_set(cache_key, customer_data, settings.customer_cache_ttl)
             
             if customer_data:
-                response_text += f"Hello {customer_data['name']}, as a {customer_data['loyalty_tier']} member, "
+                customer_context = {
+                    "customer_name": customer_data["name"],
+                    "loyalty_tier": customer_data["loyalty_tier"],
+                    "favorite_categories": customer_data.get("preferences", {}).get("favorite_categories", ["coffee"])
+                }
         
-        # Add store context if available
+        # Prepare location context
+        location_context = {
+            "distance_to_store": "2.5 km",
+            "store_name": "Starbucks Central",
+            "weather": "pleasant"
+        }
+        
+        # Get store data if available
         if request.store_id:
             cache_key = f"store:{request.store_id}"
             store_data = await cache_get(cache_key)
@@ -114,14 +127,29 @@ async def chat(
                 if store:
                     store_data = {
                         "name": store.name,
+                        "latitude": store.latitude,
+                        "longitude": store.longitude,
                         "current_promotions": store.current_promotions
                     }
                     await cache_set(cache_key, store_data, settings.store_cache_ttl)
             
             if store_data:
-                response_text += f"I can help you with questions about our {store_data['name']} location. "
+                location_context = {
+                    "distance_to_store": "1.2 km",  # Could calculate actual distance
+                    "store_name": store_data["name"],
+                    "weather": "pleasant"  # Could integrate weather API
+                }
         
-        response_text += "How can I assist you today?"
+        # Generate response using RAG pipeline
+        rag_response = await get_rag_response(
+            request.message,
+            customer_context,
+            location_context
+        )
+        
+        response_text = rag_response.get("response", "I'm here to help! How can I assist you today?")
+        sources = rag_response.get("sources", [])
+        confidence = rag_response.get("confidence", 0.8)
         
         # Record interaction if customer is identified
         if request.customer_id:
@@ -151,8 +179,8 @@ async def chat(
             response=response_text,
             customer_id=request.customer_id,
             store_id=request.store_id,
-            sources=[],  # Will be populated with RAG sources
-            confidence_score=0.95,  # Placeholder confidence
+            sources=sources,  # RAG sources from knowledge base
+            confidence_score=confidence,  # AI confidence score
             processing_time_ms=processing_time,
             session_id=None  # Will be implemented with session management
         )

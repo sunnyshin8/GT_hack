@@ -1,0 +1,6 @@
+# Essential packages for Gemini RAG testing
+google-generativeai==0.3.2
+langchain-google-genai==0.0.6
+faiss-cpu==1.7.4
+langchain-core
+python-dotenv
