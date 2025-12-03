@@ -58,7 +58,7 @@ const MessageList: React.FC<MessageListProps> = ({ messages, isLoading }) => {
         <div className="flex flex-col items-center justify-center h-full text-center">
           <div className="bg-primary-50 border border-primary-200 rounded-lg p-6 max-w-md">
             <h3 className="text-lg font-semibold text-primary-800 mb-2">
-              Welcome to Starbucks Support
+              Welcome to Foodie Stoopie
             </h3>
             <p className="text-primary-700">
               Hi! I'm your personal coffee assistant. Ask me about our drinks, 

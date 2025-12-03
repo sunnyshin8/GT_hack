@@ -92,13 +92,20 @@ class DataInitializationService:
             }
         ]
         
-        customer_ids = []
+        customers = []
         for customer_data in customers_data:
             customer = Customer(**customer_data)
             db.add(customer)
-            customer_ids.append(customer.id)
+            customers.append(customer)
         
         await db.commit()
+        
+        # Refresh to get the generated IDs
+        customer_ids = []
+        for customer in customers:
+            await db.refresh(customer)
+            customer_ids.append(customer.id)
+            
         logger.info(f"Created {len(customer_ids)} mock customers")
         return customer_ids
     
@@ -217,19 +224,28 @@ class DataInitializationService:
             }
         ]
         
-        store_ids = []
+        stores = []
         for store_data in stores_data:
             store = Store(**store_data)
             db.add(store)
-            store_ids.append(store.id)
+            stores.append(store)
         
         await db.commit()
-        logger.info(f"Created {len(store_ids)} mock stores")
+        
+        # Refresh to get the generated IDs
+        store_ids = []
+        for store in stores:
+            await db.refresh(store)
+            logger.info(f"Store after refresh: {store.id}, name: {store.name}")
+            store_ids.append(store.id)
+            
+        logger.info(f"Created {len(store_ids)} mock stores with IDs: {store_ids}")
         return store_ids
     
     @staticmethod
     async def create_mock_documents(db: AsyncSession, store_ids: List[str]) -> List[str]:
         """Create mock documents for stores and return their IDs."""
+        logger.info(f"Creating documents for store_ids: {store_ids}")
         documents_data = []
         
         # Documents for Downtown Tech Store
@@ -289,8 +305,22 @@ class DataInitializationService:
                 }
             ])
         
-        document_ids = []
+        documents = []
         for doc_data in documents_data:
+            # Move doc_type into metadata and rename metadata to doc_metadata
+            if "doc_type" in doc_data:
+                if "metadata" not in doc_data:
+                    doc_data["metadata"] = {}
+                doc_data["metadata"]["doc_type"] = doc_data.pop("doc_type")
+            
+            # Rename metadata to doc_metadata to match the model
+            if "metadata" in doc_data:
+                doc_data["doc_metadata"] = doc_data.pop("metadata")
+            
+            # Add required fields if missing
+            if "title" not in doc_data:
+                doc_data["title"] = f"Document for store {doc_data.get('store_id', 'unknown')}"
+            
             # Generate embedding for the document content
             if rag_service.model:
                 embedding = rag_service.embed_text(doc_data["content"])
@@ -298,9 +328,16 @@ class DataInitializationService:
             
             document = Document(**doc_data)
             db.add(document)
-            document_ids.append(document.id)
+            documents.append(document)
         
         await db.commit()
+        
+        # Refresh to get the generated IDs
+        document_ids = []
+        for document in documents:
+            await db.refresh(document)
+            document_ids.append(document.id)
+            
         logger.info(f"Created {len(document_ids)} mock documents")
         return document_ids
     
@@ -347,13 +384,20 @@ class DataInitializationService:
             }
         ]
         
-        interaction_ids = []
+        interactions = []
         for interaction_data in interactions_data:
             interaction = Interaction(**interaction_data)
             db.add(interaction)
-            interaction_ids.append(interaction.id)
+            interactions.append(interaction)
         
         await db.commit()
+        
+        # Refresh to get the generated IDs
+        interaction_ids = []
+        for interaction in interactions:
+            await db.refresh(interaction)
+            interaction_ids.append(interaction.id)
+            
         logger.info(f"Created {len(interaction_ids)} mock interactions")
         return interaction_ids
     

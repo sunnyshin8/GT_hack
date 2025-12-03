@@ -201,7 +201,7 @@ async def enhanced_chat(
             response=rag_response[:500],  # Truncate for storage
             response_time=time.time() - start_time,
             timestamp=datetime.now(),
-            metadata={
+            interaction_metadata={
                 "pii_detected": len(pii_result.detected_pii) > 0,
                 "stores_found": len(nearest_stores),
                 "session_id": session_id,
@@ -315,42 +315,55 @@ async def get_nearby_stores(
     lat: float = Query(..., description="Latitude"),
     lon: float = Query(..., description="Longitude"),
     radius_km: float = Query(5.0, description="Search radius in kilometers"),
+    limit: int = Query(10, description="Maximum number of stores to return"),
+    store_types: Optional[str] = Query(None, description="Comma-separated store types (cafe,restaurant,fast_food,bakery)"),
+    cuisine_types: Optional[str] = Query(None, description="Comma-separated cuisine types (indian,italian,chinese,american)"),
     db: AsyncSession = Depends(get_db)
 ):
-    """Get nearby stores sorted by distance."""
+    """Get nearby food establishments sorted by distance with filtering options."""
     try:
-        # Query all stores
-        query = select(Store)
-        result = await db.execute(query)
-        all_stores = result.scalars().all()
+        # Parse filter parameters
+        store_type_list = None
+        if store_types:
+            store_type_list = [t.strip() for t in store_types.split(",")]
         
-        stores_with_distance = []
-        for store in all_stores:
-            distance = haversine_distance(lat, lon, store.latitude, store.longitude)
-            if distance <= radius_km:
-                stores_with_distance.append({
-                    "store_id": store.store_id,
-                    "name": store.name,
-                    "address": store.address,
-                    "latitude": store.latitude,
-                    "longitude": store.longitude,
-                    "distance_meters": int(distance * 1000),
-                    "distance_km": round(distance, 2),
-                    "is_open": store.is_open,
-                    "opening_hours": store.opening_hours,
-                    "current_promotions": store.current_promotions or [],
-                    "contact_info": {
-                        "phone": store.phone,
-                        "email": store.email
-                    }
-                })
+        cuisine_type_list = None
+        if cuisine_types:
+            cuisine_type_list = [t.strip() for t in cuisine_types.split(",")]
         
-        # Sort by distance
-        stores_with_distance.sort(key=lambda x: x["distance_meters"])
+        # Use LocationService to get nearby stores
+        stores = await location_service.get_nearest_stores(
+            latitude=lat,
+            longitude=lon,
+            radius_km=radius_km,
+            limit=limit,
+            store_types=store_type_list,
+            cuisine_types=cuisine_type_list
+        )
+        
+        # Format response data
+        stores_data = []
+        for store in stores:
+            store_data = {
+                "id": store.id,
+                "name": store.name,
+                "store_type": store.store_type,
+                "cuisine_type": store.cuisine_type,
+                "latitude": store.latitude,
+                "longitude": store.longitude,
+                "distance_km": store.distance_km,
+                "is_open": store.is_open,
+                "open_hours": store.open_hours,
+                "current_promotions": store.current_promotions,
+                "key_inventory": store.key_inventory
+            }
+            stores_data.append(store_data)
+        
+        logger.info(f"Found {len(stores_data)} nearby food establishments within {radius_km}km")
         
         return NearbyStoresResponse(
-            stores=stores_with_distance,
-            total_count=len(stores_with_distance),
+            stores=stores_data,
+            total_count=len(stores_data),
             search_radius_km=radius_km,
             user_location=LocationData(latitude=lat, longitude=lon)
         )

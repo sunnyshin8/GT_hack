@@ -39,9 +39,11 @@ class LocationContext:
 
 @dataclass
 class StoreInfo:
-    """Store information with operational status."""
+    """Store information with distance."""
     id: str
     name: str
+    store_type: str
+    cuisine_type: Optional[str]
     latitude: float
     longitude: float
     distance_km: float
@@ -193,7 +195,9 @@ class LocationService:
         latitude: float, 
         longitude: float, 
         radius_km: float = 5.0,
-        limit: int = 5
+        limit: int = 5,
+        store_types: Optional[List[str]] = None,
+        cuisine_types: Optional[List[str]] = None
     ) -> List[StoreInfo]:
         """
         Get nearest stores with operational status.
@@ -224,6 +228,14 @@ class LocationService:
                 current_time = datetime.now().time()
                 
                 for store in all_stores:
+                    # Apply store type filter
+                    if store_types and store.store_type not in store_types:
+                        continue
+                    
+                    # Apply cuisine type filter
+                    if cuisine_types and store.cuisine_type not in cuisine_types:
+                        continue
+                    
                     distance = self.calculate_distance(
                         latitude, longitude, store.latitude, store.longitude
                     )
@@ -234,13 +246,15 @@ class LocationService:
                         store_info = StoreInfo(
                             id=store.id,
                             name=store.name,
+                            store_type=store.store_type,
+                            cuisine_type=store.cuisine_type,
                             latitude=store.latitude,
                             longitude=store.longitude,
                             distance_km=round(distance, 2),
                             is_open=is_open,
                             open_hours=store.open_hours,
                             current_promotions=store.current_promotions,
-                            key_inventory=self._get_key_inventory(store.inventory)
+                            key_inventory=self._get_key_inventory(store.inventory, store.store_type)
                         )
                         nearby_stores.append(store_info)
                 
@@ -339,13 +353,40 @@ class LocationService:
             finally:
                 break
     
-    def _get_key_inventory(self, full_inventory: Dict[str, Any]) -> Dict[str, Any]:
-        """Extract key inventory items for display."""
-        key_items = {
-            'beverages': ['hot_cocoa', 'coffee_beans', 'cold_brew'],
-            'food': ['sandwiches', 'pastries', 'cookies'],
-            'merchandise': ['mugs', 'tumblers']
-        }
+    def _get_key_inventory(self, full_inventory: Dict[str, Any], store_type: str = "cafe") -> Dict[str, Any]:
+        """Extract key inventory items for display based on store type."""
+        # Define key items based on store type
+        if store_type == "cafe":
+            key_items = {
+                'beverages': ['coffee', 'tea', 'cold_brew', 'smoothies'],
+                'food': ['sandwiches', 'pastries', 'cookies', 'muffins'],
+                'merchandise': ['mugs', 'tumblers']
+            }
+        elif store_type == "restaurant":
+            key_items = {
+                'appetizers': ['soup', 'salads', 'starters'],
+                'main_courses': ['entrees', 'specialties', 'chef_special'],
+                'desserts': ['cakes', 'ice_cream', 'traditional_sweets']
+            }
+        elif store_type == "fast_food":
+            key_items = {
+                'burgers': ['chicken_burger', 'veg_burger', 'cheese_burger'],
+                'sides': ['fries', 'nuggets', 'onion_rings'],
+                'beverages': ['soft_drinks', 'shakes', 'juices']
+            }
+        elif store_type == "bakery":
+            key_items = {
+                'breads': ['white_bread', 'whole_wheat', 'specialty_breads'],
+                'pastries': ['croissants', 'donuts', 'danish'],
+                'cakes': ['birthday_cakes', 'cupcakes', 'custom_cakes']
+            }
+        else:
+            # Default cafe items
+            key_items = {
+                'beverages': ['coffee', 'tea', 'cold_drinks'],
+                'food': ['snacks', 'light_meals', 'desserts'],
+                'specials': ['daily_special', 'combo_meals']
+            }
         
         key_inventory = {}
         for category, items in key_items.items():

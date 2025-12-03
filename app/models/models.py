@@ -46,6 +46,8 @@ class Store(Base):
     
     id = Column(String(36), primary_key=True, default=generate_uuid, index=True)
     name = Column(String(255), nullable=False)
+    store_type = Column(String(50), nullable=False, default="cafe")  # cafe, restaurant, fast_food, bakery, etc.
+    cuisine_type = Column(String(50), nullable=True)  # indian, italian, chinese, american, etc.
     latitude = Column(Float, nullable=False, index=True)
     longitude = Column(Float, nullable=False, index=True)
     open_hours = Column(JSON, default=lambda: {})
@@ -68,11 +70,13 @@ class Document(Base):
     __tablename__ = "documents"
     
     id = Column(String(36), primary_key=True, default=generate_uuid, index=True)
+    document_id = Column(String(36), unique=True, default=generate_uuid, index=True)
     store_id = Column(String(36), ForeignKey("stores.id"), nullable=False, index=True)
-    doc_type = Column(String(100), nullable=False, index=True)
+    title = Column(String(255), nullable=False, index=True)
     content = Column(Text, nullable=False)
+    source = Column(String(255), nullable=True)
     embedding = Column(JSON, nullable=True)  # Store embeddings as JSON array
-    metadata = Column(JSON, default=lambda: {})
+    doc_metadata = Column(JSON, default=lambda: {})  # Renamed from metadata to avoid conflict
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     
@@ -80,7 +84,7 @@ class Document(Base):
     store = relationship("Store", back_populates="documents")
     
     def __repr__(self) -> str:
-        return f"<Document(id={self.id}, doc_type={self.doc_type}, store_id={self.store_id})>"
+        return f"<Document(id={self.id}, title={self.title}, store_id={self.store_id})>"
 
 
 class Interaction(Base):
@@ -90,14 +94,16 @@ class Interaction(Base):
     
     id = Column(String(36), primary_key=True, default=generate_uuid, index=True)
     customer_id = Column(String(36), ForeignKey("customers.id"), nullable=False, index=True)
-    store_id = Column(String(36), ForeignKey("stores.id"), nullable=True, index=True)
-    interaction_type = Column(String(100), nullable=False, index=True)
-    context = Column(JSON, default=lambda: {})
-    created_at = Column(DateTime, server_default=func.now())
+    store_id = Column(String(36), ForeignKey("stores.id"), nullable=True, index=True)  # Optional store reference
+    query = Column(Text, nullable=False)
+    response = Column(Text, nullable=False)
+    response_time = Column(Float, default=0.0)
+    timestamp = Column(DateTime, server_default=func.now())
+    interaction_metadata = Column(JSON, default=lambda: {})  # Renamed to avoid conflict
     
     # Relationships
     customer = relationship("Customer", back_populates="interactions")
     store = relationship("Store", back_populates="interactions")
     
     def __repr__(self) -> str:
-        return f"<Interaction(id={self.id}, type={self.interaction_type}, customer_id={self.customer_id})>"
+        return f"<Interaction(id={self.id}, customer_id={self.customer_id}, store_id={self.store_id})>"

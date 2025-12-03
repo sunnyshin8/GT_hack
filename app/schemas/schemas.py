@@ -17,6 +17,12 @@ class BaseSchema(BaseModel):
         validate_assignment = True
 
 
+class LocationData(BaseModel):
+    """Location data for geospatial queries."""
+    latitude: float = Field(..., ge=-90, le=90, description="Latitude coordinate")
+    longitude: float = Field(..., ge=-180, le=180, description="Longitude coordinate")
+
+
 # Chat schemas
 class ChatMessage(BaseModel):
     """Individual chat message."""
@@ -102,6 +108,8 @@ class Store(BaseSchema):
     """Store response schema."""
     id: str
     name: str
+    store_type: str = Field(..., description="Type of establishment (cafe, restaurant, fast_food, bakery, etc.)")
+    cuisine_type: Optional[str] = Field(None, description="Cuisine type (indian, italian, chinese, american, etc.)")
     latitude: float = Field(..., ge=-90, le=90)
     longitude: float = Field(..., ge=-180, le=180)
     open_hours: Dict[str, Any] = Field(default_factory=dict)
@@ -115,6 +123,8 @@ class Store(BaseSchema):
 class StoreCreate(BaseSchema):
     """Schema for creating a new store."""
     name: str = Field(..., min_length=1, max_length=255)
+    store_type: str = Field("cafe", description="Type of establishment")
+    cuisine_type: Optional[str] = Field(None, description="Cuisine type")
     latitude: float = Field(..., ge=-90, le=90)
     longitude: float = Field(..., ge=-180, le=180)
     open_hours: Dict[str, Any] = Field(default_factory=dict)
@@ -128,6 +138,26 @@ class NearbyStoresRequest(BaseSchema):
     longitude: float = Field(..., ge=-180, le=180, description="User longitude")
     radius_km: float = Field(default=10.0, ge=0.1, le=100.0, description="Search radius in kilometers")
     limit: int = Field(default=10, ge=1, le=50, description="Maximum number of stores to return")
+    store_types: Optional[List[str]] = Field(None, description="Filter by store types (cafe, restaurant, fast_food, bakery)")
+    cuisine_types: Optional[List[str]] = Field(None, description="Filter by cuisine types (indian, italian, chinese, american)")
+    
+    @validator("store_types")
+    def validate_store_types(cls, v):
+        if v is not None:
+            valid_types = ["cafe", "restaurant", "fast_food", "bakery", "pizza", "dessert", "juice_bar", "food_truck"]
+            for store_type in v:
+                if store_type not in valid_types:
+                    raise ValueError(f"Invalid store type: {store_type}. Valid types: {valid_types}")
+        return v
+    
+    @validator("cuisine_types")
+    def validate_cuisine_types(cls, v):
+        if v is not None:
+            valid_cuisines = ["indian", "italian", "chinese", "american", "mexican", "thai", "japanese", "mediterranean", "continental"]
+            for cuisine_type in v:
+                if cuisine_type not in valid_cuisines:
+                    raise ValueError(f"Invalid cuisine type: {cuisine_type}. Valid cuisines: {valid_cuisines}")
+        return v
 
 
 # Document schemas

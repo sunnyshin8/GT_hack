@@ -1,6 +1,6 @@
 """
-Mock data generation script for Indian users and Starbucks stores.
-Generates realistic data using Faker library with Indian locale.
+Mock data generation script for Indian users and diverse food establishments.
+Generates realistic data for cafes, restaurants, fast food, bakeries and more using Faker library with Indian locale.
 """
 import json
 import random
@@ -21,7 +21,7 @@ from app.services.rag_service import rag_service
 fake = Faker('en_IN')
 logger = get_logger(__name__)
 
-# Indian city coordinates for Starbucks stores
+# Indian city coordinates for food establishments
 INDIAN_CITIES = [
     {"name": "Delhi", "lat": 28.6139, "lng": 77.2090},
     {"name": "Mumbai", "lat": 19.0760, "lng": 72.8777},
@@ -46,19 +46,55 @@ INDIAN_LAST_NAMES = [
     "Goyal", "Arora", "Sethi", "Goel", "Khanna", "Tandon", "Sinha", "Chandra"
 ]
 
-BEVERAGE_CATEGORIES = [
-    "hot_coffee", "cold_coffee", "tea", "hot_chocolate", "frappuccino", 
-    "smoothies", "cold_brew", "espresso"
-]
+# Store types and their characteristics
+STORE_TYPES = {
+    "cafe": {
+        "names": ["Starbucks", "Cafe Coffee Day", "Barista", "Third Wave Coffee", "Blue Tokai", "Tata Starbucks"],
+        "cuisines": ["american", "continental"],
+        "inventory_categories": ["hot_coffee", "cold_coffee", "tea", "pastries", "sandwiches", "cookies"]
+    },
+    "restaurant": {
+        "names": ["Punjabi Dhaba", "South Indian Express", "Maharaja Restaurant", "Spice Route", "Royal Palace"],
+        "cuisines": ["indian", "south_indian", "north_indian", "punjabi"],
+        "inventory_categories": ["dal", "rice", "roti", "curries", "biryani", "desserts"]
+    },
+    "fast_food": {
+        "names": ["McDonald's", "KFC", "Burger King", "Domino's Pizza", "Pizza Hut", "Subway"],
+        "cuisines": ["american", "italian"],
+        "inventory_categories": ["burgers", "fries", "pizza", "chicken", "soft_drinks", "desserts"]
+    },
+    "bakery": {
+        "names": ["Monginis", "Cake Studio", "Bread & More", "Sweet Treats", "Golden Bakery"],
+        "cuisines": ["continental", "indian"],
+        "inventory_categories": ["breads", "cakes", "pastries", "cookies", "donuts", "custom_cakes"]
+    },
+    "pizza": {
+        "names": ["Domino's", "Pizza Hut", "Papa John's", "La Pinoz", "Oven Story"],
+        "cuisines": ["italian", "american"],
+        "inventory_categories": ["pizza", "garlic_bread", "pasta", "soft_drinks", "desserts"]
+    },
+    "juice_bar": {
+        "names": ["Fresh Junction", "Juice World", "Healthy Bytes", "Fruit Express", "Green Smoothie"],
+        "cuisines": ["healthy", "continental"],
+        "inventory_categories": ["fresh_juices", "smoothies", "salads", "healthy_snacks", "protein_shakes"]
+    }
+}
 
-SNACK_CATEGORIES = [
-    "sandwiches", "pastries", "cookies", "muffins", "croissants", 
-    "salads", "wraps", "cakes"
-]
-
-MERCHANDISE_CATEGORIES = [
-    "mugs", "tumblers", "coffee_beans", "t_shirts", "bags", "accessories"
-]
+# Comprehensive inventory items for different store types
+INVENTORY_ITEMS = {
+    "hot_coffee": ["cappuccino", "latte", "americano", "espresso", "macchiato"],
+    "cold_coffee": ["iced_coffee", "cold_brew", "frappuccino", "iced_latte"],
+    "tea": ["chai", "green_tea", "herbal_tea", "masala_chai", "earl_grey"],
+    "pastries": ["croissant", "danish", "muffin", "scone", "eclair"],
+    "sandwiches": ["club_sandwich", "grilled_chicken", "veg_sandwich", "paneer_sandwich"],
+    "dal": ["dal_tadka", "dal_makhani", "sambar", "rasam", "dal_fry"],
+    "rice": ["biryani", "pulao", "jeera_rice", "coconut_rice", "lemon_rice"],
+    "curries": ["butter_chicken", "paneer_makhani", "chole", "rajma", "palak_paneer"],
+    "pizza": ["margherita", "pepperoni", "veg_supreme", "chicken_tikka", "paneer_pizza"],
+    "burgers": ["chicken_burger", "veg_burger", "cheese_burger", "maharaja_mac"],
+    "breads": ["white_bread", "brown_bread", "multigrain", "pav", "buns"],
+    "fresh_juices": ["orange_juice", "apple_juice", "mixed_fruit", "pomegranate", "watermelon"]
+}
 
 
 def generate_masked_phone() -> str:
@@ -287,35 +323,197 @@ def generate_store_hours() -> Dict[str, str]:
     }
 
 
+def generate_store_hours_by_type(store_type: str) -> Dict[str, str]:
+    """Generate store operating hours based on store type."""
+    if store_type == "cafe":
+        return {
+            "monday": "07:00-22:00",
+            "tuesday": "07:00-22:00", 
+            "wednesday": "07:00-22:00",
+            "thursday": "07:00-22:00",
+            "friday": "07:00-23:00",
+            "saturday": "07:00-23:00",
+            "sunday": "08:00-22:00"
+        }
+    elif store_type == "restaurant":
+        return {
+            "monday": "11:00-23:00",
+            "tuesday": "11:00-23:00", 
+            "wednesday": "11:00-23:00",
+            "thursday": "11:00-23:00",
+            "friday": "11:00-01:00",  # Late nights on Friday
+            "saturday": "11:00-01:00",
+            "sunday": "11:00-23:00"
+        }
+    elif store_type == "fast_food":
+        return {
+            "monday": "10:00-23:00",
+            "tuesday": "10:00-23:00", 
+            "wednesday": "10:00-23:00",
+            "thursday": "10:00-23:00",
+            "friday": "10:00-01:00",
+            "saturday": "10:00-01:00",
+            "sunday": "10:00-23:00"
+        }
+    elif store_type == "bakery":
+        return {
+            "monday": "06:00-21:00",
+            "tuesday": "06:00-21:00", 
+            "wednesday": "06:00-21:00",
+            "thursday": "06:00-21:00",
+            "friday": "06:00-21:00",
+            "saturday": "06:00-22:00",
+            "sunday": "07:00-21:00"
+        }
+    else:
+        # Default hours
+        return generate_store_hours()
+
+
+def generate_current_promotions_by_type(store_type: str) -> List[Dict[str, Any]]:
+    """Generate promotions specific to store type."""
+    if store_type == "cafe":
+        promotions = [
+            {
+                "code": "COFFEE20",
+                "title": "Coffee Lover's Deal",
+                "description": "20% off on all coffee beverages",
+                "discount": 20,
+                "discount_type": "percentage",
+                "valid_until": "2025-01-15",
+                "minimum_order": 200,
+                "applicable_categories": ["hot_coffee", "cold_coffee"]
+            },
+            {
+                "code": "COMBO15",
+                "title": "Coffee & Pastry Combo",
+                "description": "15% off when you buy coffee with pastry",
+                "discount": 15,
+                "discount_type": "percentage",
+                "valid_until": "2025-12-31",
+                "minimum_order": 300,
+                "applicable_categories": ["hot_coffee", "pastries"]
+            }
+        ]
+    elif store_type == "restaurant":
+        promotions = [
+            {
+                "code": "FAMILY25",
+                "title": "Family Feast",
+                "description": "25% off on orders above ₹1000",
+                "discount": 25,
+                "discount_type": "percentage",
+                "valid_until": "2025-01-31",
+                "minimum_order": 1000,
+                "applicable_categories": ["all"]
+            },
+            {
+                "code": "LUNCH10",
+                "title": "Lunch Special",
+                "description": "10% off on lunch orders (12 PM - 4 PM)",
+                "discount": 10,
+                "discount_type": "percentage",
+                "valid_until": "2025-06-30",
+                "minimum_order": 400,
+                "applicable_categories": ["dal", "rice", "curries"]
+            }
+        ]
+    elif store_type == "fast_food":
+        promotions = [
+            {
+                "code": "BURGER30",
+                "title": "Burger Bonanza",
+                "description": "30% off on all burgers",
+                "discount": 30,
+                "discount_type": "percentage",
+                "valid_until": "2025-01-20",
+                "minimum_order": 200,
+                "applicable_categories": ["burgers"]
+            }
+        ]
+    else:
+        promotions = [
+            {
+                "code": "FRESH20",
+                "title": "Fresh & Healthy",
+                "description": "20% off on fresh items",
+                "discount": 20,
+                "discount_type": "percentage",
+                "valid_until": "2025-12-31",
+                "minimum_order": 250,
+                "applicable_categories": ["all"]
+            }
+        ]
+    
+    return random.sample(promotions, k=random.randint(1, min(2, len(promotions))))
+
+
+def generate_store_inventory_by_type(store_type: str, categories: List[str]) -> Dict[str, Any]:
+    """Generate inventory based on store type and categories."""
+    inventory = {}
+    
+    for category in categories:
+        if category in INVENTORY_ITEMS:
+            items = {}
+            for item in INVENTORY_ITEMS[category]:
+                items[item] = {
+                    "available": random.choice([True, False, True, True]),  # 75% chance available
+                    "price": random.randint(150, 800),  # Prices in INR
+                    "description": f"Fresh {item.replace('_', ' ').title()}",
+                    "popularity": random.randint(1, 5)
+                }
+            inventory[category] = items
+    
+    return inventory
+
+
 def generate_mock_stores() -> List[Dict[str, Any]]:
-    """Generate mock Starbucks stores in Indian cities."""
+    """Generate diverse food establishments in Indian cities."""
     stores = []
     
+    # Generate 3-5 stores per city with diverse types
     for city in INDIAN_CITIES:
-        # Add slight variation to coordinates for realistic placement
-        lat_variation = random.uniform(-0.05, 0.05)
-        lng_variation = random.uniform(-0.05, 0.05)
+        num_stores_in_city = random.randint(3, 5)
         
-        store = {
-            "id": str(uuid4()),
-            "name": f"Starbucks {city['name']} Central",
-            "latitude": city["lat"] + lat_variation,
-            "longitude": city["lng"] + lng_variation,
-            "open_hours": generate_store_hours(),
-            "current_promotions": generate_current_promotions(),
-            "inventory": generate_store_inventory(),
-            "created_at": fake.date_time_between(
-                start_date=datetime.now() - timedelta(days=365),
-                end_date=datetime.now() - timedelta(days=180)
-            ),
-            "updated_at": fake.date_time_between(
-                start_date=datetime.now() - timedelta(days=7),
-                end_date=datetime.now()
-            )
-        }
-        stores.append(store)
+        for i in range(num_stores_in_city):
+            # Select random store type
+            store_type = random.choice(list(STORE_TYPES.keys()))
+            store_config = STORE_TYPES[store_type]
+            
+            # Add variation to coordinates for realistic placement
+            lat_variation = random.uniform(-0.05, 0.05)
+            lng_variation = random.uniform(-0.05, 0.05)
+            
+            # Generate store name
+            base_name = random.choice(store_config["names"])
+            area_suffix = random.choice(["Central", "Mall", "Express", "Deluxe", "Plaza", "Junction"])
+            store_name = f"{base_name} {city['name']} {area_suffix}"
+            
+            # Select cuisine type
+            cuisine_type = random.choice(store_config["cuisines"])
+            
+            store = {
+                "id": str(uuid4()),
+                "name": store_name,
+                "store_type": store_type,
+                "cuisine_type": cuisine_type,
+                "latitude": city["lat"] + lat_variation,
+                "longitude": city["lng"] + lng_variation,
+                "open_hours": generate_store_hours_by_type(store_type),
+                "current_promotions": generate_current_promotions_by_type(store_type),
+                "inventory": generate_store_inventory_by_type(store_type, store_config["inventory_categories"]),
+                "created_at": fake.date_time_between(
+                    start_date=datetime.now() - timedelta(days=365),
+                    end_date=datetime.now() - timedelta(days=180)
+                ),
+                "updated_at": fake.date_time_between(
+                    start_date=datetime.now() - timedelta(days=7),
+                    end_date=datetime.now()
+                )
+            }
+            stores.append(store)
     
-    logger.info(f"Generated {len(stores)} mock stores")
+    logger.info(f"Generated {len(stores)} diverse food establishments across {len(INDIAN_CITIES)} cities")
     return stores
 
 

@@ -11,20 +11,32 @@ from datetime import datetime
 
 import numpy as np
 import google.generativeai as genai
-from langchain.docstore.document import Document
+from langchain_core.documents import Document
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
-from langchain.vectorstores import FAISS
-from langchain.prompts import ChatPromptTemplate
-from langchain.schema.output_parser import StrOutputParser
-from langchain.schema.runnable import RunnablePassthrough
+from langchain_community.vectorstores import FAISS
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
+from dotenv import load_dotenv
 
 from app.core.cache import cache_get, cache_set
 from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.services.knowledge_base_generator import generate_starbucks_knowledge_base
 
+# Load environment variables
+load_dotenv()
+
 logger = get_logger(__name__)
 settings = get_settings()
+
+# Configure Google Generative AI
+gemini_api_key = os.getenv("GEMINI_API_KEY")
+if gemini_api_key:
+    genai.configure(api_key=gemini_api_key)
+    logger.info("Gemini API configured successfully")
+else:
+    logger.warning("GEMINI_API_KEY not found in environment variables")
 
 
 class RAGPipeline:
@@ -42,9 +54,12 @@ class RAGPipeline:
         
     def _check_gemini_key(self):
         """Check if Google API key is available."""
-        if not os.getenv("GOOGLE_API_KEY"):
-            logger.warning("GOOGLE_API_KEY not found in environment variables")
+        self.gemini_api_key = os.getenv("GEMINI_API_KEY")
+        if not self.gemini_api_key:
+            logger.warning("GEMINI_API_KEY not found in environment variables")
             logger.info("RAG pipeline will work in fallback mode without Gemini")
+        else:
+            logger.info(f"Gemini API key loaded successfully (key starts with: {self.gemini_api_key[:8]}...)")
             
     async def initialize(self):
         """Initialize the RAG pipeline components."""
@@ -56,7 +71,7 @@ class RAGPipeline:
             logger.info(f"Loaded {len(self.knowledge_base)} knowledge base documents")
             
             # Initialize Gemini components if API key is available
-            if os.getenv("GOOGLE_API_KEY"):
+            if os.getenv("GEMINI_API_KEY"):
                 await self._initialize_gemini_components()
             else:
                 logger.warning("Gemini components not initialized - API key missing")
@@ -71,7 +86,7 @@ class RAGPipeline:
         """Initialize Google Gemini embeddings and LLM."""
         try:
             # Configure Google Gemini
-            api_key = os.getenv("GOOGLE_API_KEY")
+            api_key = os.getenv("GEMINI_API_KEY")
             genai.configure(api_key=api_key)
             
             # Initialize embeddings with Gemini embedding model

@@ -35,6 +35,11 @@ class Settings(BaseSettings):
     customer_cache_ttl: int = 600
     store_cache_ttl: int = 900
     
+    # Gemini AI Configuration
+    gemini_api_key: Optional[str] = None
+    gemini_model: str = "gemini-2.5-flash"
+    gemini_temperature: float = 0.7
+    
     class Config:
         env_file = ".env"
         case_sensitive = False

@@ -63,9 +63,9 @@ async def test_rag_pipeline():
 
 if __name__ == "__main__":
     # Check if API key is available
-    api_key = os.getenv("GOOGLE_API_KEY")
+    api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-        print("❌ GOOGLE_API_KEY not found in environment variables")
+        print("❌ GEMINI_API_KEY not found in environment variables")
         print("Please make sure the .env file is properly configured")
     else:
         print(f"✅ Found Google API key: {api_key[:10]}...")

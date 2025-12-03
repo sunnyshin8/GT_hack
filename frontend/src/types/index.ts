@@ -10,16 +10,21 @@ export interface Message {
 }
 
 export interface Store {
-  store_id: string;
+  id?: string;
+  store_id?: string;  // Legacy support
   name: string;
+  store_type: string;  // cafe, restaurant, fast_food, bakery, etc.
+  cuisine_type?: string;  // indian, italian, chinese, american, etc.
   address?: string;
   latitude?: number;
   longitude?: number;
-  distance_meters: number;
+  distance_meters?: number;
   distance_km?: number;
   is_open: boolean;
   opening_hours?: string;
-  current_promotions: string[];
+  open_hours?: Record<string, string>;
+  current_promotions: string[] | Record<string, any>[];
+  key_inventory?: Record<string, any>;
   contact_info?: {
     phone?: string;
     email?: string;

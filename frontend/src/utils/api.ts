@@ -67,13 +67,25 @@ class APIClient {
   async getNearbyStores(
     latitude: number,
     longitude: number,
-    radiusKm: number = 5
+    radiusKm: number = 5,
+    limit: number = 10,
+    storeTypes?: string[],
+    cuisineTypes?: string[]
   ): Promise<{ stores: Store[]; total_count: number; search_radius_km: number; user_location: Location }> {
     const params = new URLSearchParams({
       lat: latitude.toString(),
       lon: longitude.toString(),
       radius_km: radiusKm.toString(),
+      limit: limit.toString(),
     });
+
+    if (storeTypes && storeTypes.length > 0) {
+      params.append('store_types', storeTypes.join(','));
+    }
+
+    if (cuisineTypes && cuisineTypes.length > 0) {
+      params.append('cuisine_types', cuisineTypes.join(','));
+    }
 
     return this.request<{ stores: Store[]; total_count: number; search_radius_km: number; user_location: Location }>(
       `/api/v1/stores/nearby?${params}`

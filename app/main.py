@@ -5,9 +5,13 @@ import time
 from contextlib import asynccontextmanager
 from datetime import datetime
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+
+# Load environment variables first
+load_dotenv()
 
 from app.api.endpoints import router
 from app.api.enhanced_endpoints import router as enhanced_router
@@ -190,7 +194,8 @@ async def validation_exception_handler(request: Request, exc):
 
 
 # Include API routes
-app.include_router(router)
+app.include_router(router, tags=["chat"])
+app.include_router(enhanced_router, tags=["enhanced"])
 
 
 # Root endpoint

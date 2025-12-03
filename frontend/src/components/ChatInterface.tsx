@@ -31,8 +31,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               <MessageSquare className="w-5 h-5 text-primary-600" />
             </div>
             <div>
-              <h1 className="font-semibold text-gray-900">Starbucks Support</h1>
-              <p className="text-sm text-gray-600">Your personal coffee assistant</p>
+              <h1 className="font-semibold text-gray-900">Foodie Stoopie</h1>
+              <p className="text-sm text-gray-600">Your personal diner assistant</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -86,7 +86,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               </div>
               <h3 className="font-medium text-gray-900 mb-2">No stores found</h3>
               <p className="text-sm text-gray-600">
-                We couldn't find any Starbucks stores near your location. 
+                We couldn't find any Food Place stores near your location. 
                 Try searching in a different area.
               </p>
             </div>

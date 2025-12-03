@@ -1,6 +1,6 @@
 """
 Standalone script to generate mock data for the chatbot application.
-Run this script to populate the database with Indian users and Starbucks stores.
+Run this script to populate the database with Indian users and diverse food establishments.
 """
 import asyncio
 import sys
@@ -27,7 +27,7 @@ logger = get_logger(__name__)
 
 async def main():
     """Main function to generate and seed mock data."""
-    print("🚀 Starting Mock Data Generation for Indian Starbucks Chatbot")
+    print("🚀 Starting Mock Data Generation for Indian Food Establishments Chatbot")
     print("=" * 60)
     
     try:
@@ -45,9 +45,9 @@ async def main():
         customers = generate_mock_customers(100)
         print(f"✅ Generated {len(customers)} customers")
         
-        print("🏪 Generating 5 Starbucks stores in Indian cities...")
+        print("🏪 Generating diverse food establishments in Indian cities...")
         stores = generate_mock_stores()
-        print(f"✅ Generated {len(stores)} stores")
+        print(f"✅ Generated {len(stores)} diverse food establishments")
         
         # Display summary statistics
         loyalty_stats = {}
@@ -67,7 +67,7 @@ async def main():
         # Save to JSON files
         print(f"\n💾 Saving data to JSON files...")
         save_to_json(customers, stores, "mock_data")
-        print("✅ Data saved to mock_data_users.json and mock_data_stores.json")
+        print("✅ Data saved to mock_data_users.json and mock_data_food_establishments.json")
         
         # Seed database
         print(f"\n🗄️  Seeding SQLite database...")
