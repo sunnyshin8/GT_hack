@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.endpoints import router
+from app.api.enhanced_endpoints import router as enhanced_router
 from app.core.cache import close_redis_connection
 from app.core.config import get_settings
 from app.core.database import create_tables, close_db_connection, get_db

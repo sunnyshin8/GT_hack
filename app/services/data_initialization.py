@@ -3,7 +3,7 @@ Service for initializing the database with mock data.
 """
 import logging
 from datetime import datetime, timedelta
-from typing import List
+from typing import Dict, List
 from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession

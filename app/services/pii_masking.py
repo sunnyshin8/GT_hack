@@ -15,6 +15,7 @@ try:
     import spacy
     SPACY_AVAILABLE = True
 except ImportError:
+    spacy = None
     SPACY_AVAILABLE = False
 
 from app.core.cache import cache_get, cache_set

@@ -5,8 +5,20 @@ import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
-from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
+
+try:
+    from sentence_transformers import SentenceTransformer
+    SENTENCE_TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    SentenceTransformer = None
+    SENTENCE_TRANSFORMERS_AVAILABLE = False
+
+try:
+    from sklearn.metrics.pairwise import cosine_similarity
+    SKLEARN_AVAILABLE = True
+except ImportError:
+    cosine_similarity = None
+    SKLEARN_AVAILABLE = False
 
 from app.core.config import get_settings
 
@@ -25,6 +37,9 @@ class RAGService:
     async def initialize(self):
         """Initialize the embedding model."""
         try:
+            if not SENTENCE_TRANSFORMERS_AVAILABLE:
+                logger.warning("sentence-transformers not available, RAG service will be limited")
+                return
             self.model = SentenceTransformer(settings.embedding_model)
             logger.info(f"RAG service initialized with model: {settings.embedding_model}")
         except Exception as e:
@@ -56,6 +71,9 @@ class RAGService:
     def embed_texts(self, texts: List[str]) -> List[List[float]]:
         """Generate embeddings for multiple texts."""
         if not self.model:
+            if not SENTENCE_TRANSFORMERS_AVAILABLE:
+                logger.error("sentence-transformers not available, cannot generate embeddings")
+                return []
             raise RuntimeError("RAG service not initialized")
         
         try:
@@ -63,15 +81,27 @@ class RAGService:
             return embeddings
         except Exception as e:
             logger.error(f"Failed to generate batch embeddings: {e}")
+            return []
             raise
     
     def calculate_similarity(
-        self, 
+        self,
         query_embedding: List[float], 
         document_embeddings: List[List[float]]
     ) -> List[float]:
         """Calculate cosine similarity between query and document embeddings."""
         try:
+            if not SKLEARN_AVAILABLE:
+                logger.warning("sklearn not available, using basic similarity calculation")
+                # Basic dot product similarity as fallback
+                query_vec = np.array(query_embedding)
+                similarities = []
+                for doc_embedding in document_embeddings:
+                    doc_vec = np.array(doc_embedding)
+                    similarity = np.dot(query_vec, doc_vec) / (np.linalg.norm(query_vec) * np.linalg.norm(doc_vec))
+                    similarities.append(similarity)
+                return similarities
+            
             query_vec = np.array(query_embedding).reshape(1, -1)
             doc_vecs = np.array(document_embeddings)
             
